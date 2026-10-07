@@ -1,0 +1,92 @@
+# Local test topology. Mirrors the Railway service graph:
+#   db       -> PostgreSQL 16 (own volume, private)
+#   redis    -> Valkey 8, Redis-compatible (cache, queue, sessions; own volume, private)
+#   opnform  -> wrapper image: OpnForm API (php-fpm) + queue worker + scheduler + nginx front; the only public service
+#   client   -> stock OpnForm Nuxt client, private; nginx in opnform proxies non-API paths to it
+name: opnform-railway-test
+
+networks:
+  default:
+    name: opnform-railway-test
+
+x-app-url: &app_url http://127.0.0.1:${OPNFORM_TEST_PORT:-18290}
+
+services:
+  db:
+    image: postgres:16.15@sha256:65b16a8b326e0cfbdf33fa7e783f2a0cb352a61448616ccccfd616ef42aa0f65
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: opnform
+      POSTGRES_PASSWORD: local-test-only-postgres-password
+      POSTGRES_DB: opnform
+      # Data in a sub-directory of the volume (the image's VOLUME is /var/lib/postgresql/data, which would otherwise
+      # shadow it with an anonymous volume locally; on Railway the volume root also holds lost+found).
+      PGDATA: /var/lib/postgresql/pgdata
+    volumes:
+      - pg:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U opnform -d opnform']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: valkey/valkey:8.1.10-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+    restart: unless-stopped
+    command: ['valkey-server', '--appendonly', 'yes', '--protected-mode', 'no']
+    volumes:
+      - redis:/data
+
+  opnform:
+    build:
+      context: .
+      dockerfile: images/opnform/Dockerfile
+      args:
+        WRAPPER_VERSION: ${WRAPPER_VERSION:-0.0.0-local}
+        VCS_REF: ${VCS_REF:-local}
+    image: ${OPNFORM_RAILWAY_IMAGE:-opnform-railway:local}
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    environment:
+      PORT: '8080'
+      APP_URL: *app_url
+      FRONT_URL: *app_url
+      APP_KEY: local-test-only-app-key-32chars!
+      JWT_SECRET: local-test-only-jwt-secret-0123456789abcdef
+      FRONT_API_SECRET: local-test-only-front-api-secret
+      ADMIN_NAME: Admin
+      ADMIN_EMAIL: ${OPNFORM_TEST_ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${OPNFORM_TEST_ADMIN_PASSWORD:-local-test-only-Admin-pass1!}
+      ADMIN_EMAILS: ${OPNFORM_TEST_ADMIN_EMAIL:-admin@example.com}
+      DB_HOST: db
+      DB_PORT: '5432'
+      DB_DATABASE: opnform
+      DB_USERNAME: opnform
+      DB_PASSWORD: local-test-only-postgres-password
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      CLIENT_UPSTREAM: client:3000
+      OPNFORM_ANONYMOUS_TELEMETRY_DISABLED: 'true'
+      JWT_SKIP_IP_UA_VALIDATION: 'false'
+    volumes:
+      - storage:/usr/share/nginx/html/storage
+    ports:
+      - '127.0.0.1:${OPNFORM_TEST_PORT:-18290}:8080'
+
+  client:
+    image: jhumanj/opnform-client:2.5.0@sha256:8862ee89453fdf10ec1c652b94a2dfb28abd16fe0af1d67e982bcc780dcca68e
+    restart: unless-stopped
+    environment:
+      PORT: '3000'
+      NUXT_PUBLIC_APP_URL: *app_url
+      NUXT_PUBLIC_API_BASE: http://127.0.0.1:${OPNFORM_TEST_PORT:-18290}/api
+      NUXT_PRIVATE_API_BASE: http://opnform:8080/api
+      NUXT_API_SECRET: local-test-only-front-api-secret
+      NUXT_PUBLIC_ENV: production
+
+volumes:
+  pg:
+  redis:
+  storage:
