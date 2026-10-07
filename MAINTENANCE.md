@@ -20,4 +20,4 @@
 - The register endpoint's two throttles share one key, so a few quick register/login attempts from one IP get 429
   for a minute; tests retry on 429.
 - The wrapper must not start nginx before the first-user bootstrap, or the setup-mode registration is public.
-- Client health checks hit `/favicon.ico` directly on the private client (no domain), not through nginx.
+- Railway rejects health-check paths with a dot (`/favicon.ico`); the private client has no health check, the `opnform` front checks `/api/healthcheck`.

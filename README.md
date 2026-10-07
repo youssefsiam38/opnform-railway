@@ -6,6 +6,8 @@ read the responses in a table.
 
 Community-maintained. Not affiliated with or endorsed by OpnForm; the icon is generic, not the OpnForm logo.
 
+Deploy: https://railway.com/deploy/opnform
+
 ## What you get
 
 | Service   | Image | Public | Volume |

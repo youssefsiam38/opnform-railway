@@ -9,7 +9,7 @@
   - `jhumanj/opnform-client:2.5.0@sha256:8862ee89453fdf10ec1c652b94a2dfb28abd16fe0af1d67e982bcc780dcca68e`
 - Bundled: `postgres:16.15@sha256:65b16a8b326e0cfbdf33fa7e783f2a0cb352a61448616ccccfd616ef42aa0f65`,
   `valkey/valkey:8.1.10-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507`
-- Wrapper: `ghcr.io/youssefsiam38/opnform-railway:1.0.0@WRAPPER_DIGEST`
+- Wrapper (built by `publish-image` from tag v1.0.0, public on GHCR): `ghcr.io/youssefsiam38/opnform-railway:1.0.0@sha256:549cd20a56c8f0f65b137d6363eac37081b0e4fbab6c2aa34af9632c0f035992`
 
 ## Refreshing a digest
 
